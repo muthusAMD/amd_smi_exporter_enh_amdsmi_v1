@@ -5,7 +5,8 @@ build:
 	go get github.com/prometheus/client_golang
 	go get github.com/prometheus/client_golang/prometheus
 	go get github.com/prometheus/client_golang/prometheus/promhttp
-	go get github.com/amd/go_amd_smi@master
+	#go get github.com/amd/go_amd_smi@master
+	go get github.com/muthusAMD/go_amd_smi_enh_amdsmi_v1@master
 	go build -o amd_smi_exporter main.go cpu_data.go
 
 clean:
