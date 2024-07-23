@@ -61,7 +61,7 @@ type amd_data struct {
 	NumGPUs *prometheus.Desc
 	GPUDevId *prometheus.Desc
 	GPUPowerCap *prometheus.Desc
-	GPUPowerAvg *prometheus.Desc
+	GPUPower *prometheus.Desc
 	GPUTemperature *prometheus.Desc
 	GPUSCLK *prometheus.Desc
 	GPUMCLK *prometheus.Desc
@@ -150,10 +150,10 @@ func NewCollector(handle func() (collect.AMDParams)) prometheus.Collector {
 			[]string{"gpu_power_cap", "productname"},// The metric's variable label dimensions.
 			nil,// The metric's constant label dimensions.
 		),
-		GPUPowerAvg: prometheus.NewDesc(
-			prometheus.BuildFQName("amd", "", "gpu_power_avg"),
+		GPUPower: prometheus.NewDesc(
+			prometheus.BuildFQName("amd", "", "gpu_power"),
 			"AMD Params",// The metric's help text.
-			[]string{"gpu_power_avg", "productname"},// The metric's variable label dimensions.
+			[]string{"gpu_power", "productname"},// The metric's variable label dimensions.
 			nil,// The metric's constant label dimensions.
 		),
 		GPUTemperature: prometheus.NewDesc(
@@ -207,117 +207,123 @@ func (c *amd_data) Collect(ch chan<- prometheus.Metric) {
 
 	data := c.Data() //Call the Scan() function here and get AMDParams
 
-	for i,s := range data.CoreEnergy{
-		if uint(i) > (data.Threads - 1) {
-			continue
+	if 0 != data.Threads {
+		for i,s := range data.CoreEnergy{
+			if uint(i) > (data.Threads - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.CoreEnergy,
+				prometheus.CounterValue, float64(s), strconv.Itoa(i))
 		}
-		ch <- prometheus.MustNewConstMetric(c.CoreEnergy,
-			prometheus.CounterValue, float64(s), strconv.Itoa(i))
+
+		for i,s := range data.CoreBoost{
+			if uint(i) > (data.Threads - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.BoostLimit,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i))
+		}
 	}
 
-	for i,s := range data.CoreBoost{
-		if uint(i) > (data.Threads - 1) {
-			continue
+	if 0 != data.Sockets {
+		for i,s := range data.SocketEnergy{
+			if uint(i) > (data.Sockets - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.SocketEnergy,
+				prometheus.CounterValue, float64(s), strconv.Itoa(i))
 		}
-		ch <- prometheus.MustNewConstMetric(c.BoostLimit,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i))
+
+		for i,s := range data.SocketPower{
+			if uint(i) > (data.Sockets - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.SocketPower,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i))
+		}
+
+		for i,s := range data.PowerLimit{
+			if uint(i) > (data.Sockets - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.PowerLimit,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i))
+		}
+
+		for i,s := range data.ProchotStatus{
+			if uint(i) > (data.Sockets - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.ProchotStatus,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i))
+		}
 	}
 
-	for i,s := range data.SocketEnergy{
-		if uint(i) > (data.Sockets - 1) {
-			continue
+	if 0 != data.NumGPUs {
+		for i,s := range data.GPUDevId{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUDevId,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
 		}
-		ch <- prometheus.MustNewConstMetric(c.SocketEnergy,
-			prometheus.CounterValue, float64(s), strconv.Itoa(i))
-	}
 
-	for i,s := range data.SocketPower{
-		if uint(i) > (data.Sockets - 1) {
-			continue
+		for i,s := range data.GPUPowerCap{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUPowerCap,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
 		}
-		ch <- prometheus.MustNewConstMetric(c.SocketPower,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i))
-	}
 
-	for i,s := range data.PowerLimit{
-		if uint(i) > (data.Sockets - 1) {
-			continue
+		for i,s := range data.GPUPower{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUPower,
+				prometheus.CounterValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
 		}
-		ch <- prometheus.MustNewConstMetric(c.PowerLimit,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i))
-	}
 
-	for i,s := range data.ProchotStatus{
-		if uint(i) > (data.Sockets - 1) {
-			continue
+		for i,s := range data.GPUTemperature{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUTemperature,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
 		}
-		ch <- prometheus.MustNewConstMetric(c.ProchotStatus,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i))
-	}
 
-	for i,s := range data.GPUDevId{
-		if uint(i) > (data.NumGPUs - 1) {
-			continue
+		for i,s := range data.GPUSCLK{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUSCLK,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
 		}
-		ch <- prometheus.MustNewConstMetric(c.GPUDevId,
+
+		for i,s := range data.GPUMCLK{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUMCLK,
+				prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
+		}
+
+		for i,s := range data.GPUUsage{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUUsage,
 			prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-	}
-
-	for i,s := range data.GPUPowerCap{
-		if uint(i) > (data.NumGPUs - 1) {
-			continue
 		}
-		ch <- prometheus.MustNewConstMetric(c.GPUPowerCap,
+
+		for i,s := range data.GPUMemoryUsage{
+			if uint(i) > (data.NumGPUs - 1) {
+				continue
+			}
+			ch <- prometheus.MustNewConstMetric(c.GPUMemoryUsage,
 			prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-	}
-
-	for i,s := range data.GPUPowerAvg{
-		if uint(i) > (data.NumGPUs - 1) {
-			continue
 		}
-		ch <- prometheus.MustNewConstMetric(c.GPUPowerAvg,
-			prometheus.CounterValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
 	}
-
-	for i,s := range data.GPUTemperature{
-		if uint(i) > (data.NumGPUs - 1) {
-			continue
-		}
-		ch <- prometheus.MustNewConstMetric(c.GPUTemperature,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-	}
-
-	for i,s := range data.GPUSCLK{
-		if uint(i) > (data.NumGPUs - 1) {
-			continue
-		}
-		ch <- prometheus.MustNewConstMetric(c.GPUSCLK,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-	}
-
-	for i,s := range data.GPUMCLK{
-		if uint(i) > (data.NumGPUs - 1) {
-			continue
-		}
-		ch <- prometheus.MustNewConstMetric(c.GPUMCLK,
-			prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-	}
-
-        for i,s := range data.GPUUsage{
-                if uint(i) > (data.NumGPUs - 1) {
-                        continue
-                }
-                ch <- prometheus.MustNewConstMetric(c.GPUUsage,
-                        prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-        }
-
-        for i,s := range data.GPUMemoryUsage{
-                if uint(i) > (data.NumGPUs - 1) {
-                        continue
-                }
-                ch <- prometheus.MustNewConstMetric(c.GPUMemoryUsage,
-                        prometheus.GaugeValue, float64(s), strconv.Itoa(i), gGPUProductNames[i])
-        }
 
 	ch <- prometheus.MustNewConstMetric(c.Sockets,
 		prometheus.GaugeValue, float64(data.Sockets), "")
